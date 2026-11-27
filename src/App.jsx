@@ -1,122 +1,119 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useCallback, useState } from "react";
+import "./App.css";
+import MessageInput from "./components/MessageInput";
+import ExampleMessages from "./components/ExampleMessages";
+import ResultCard from "./components/ResultCard";
+import CloudConsentDialog from "./components/CloudConsentDialog";
+import TestRunner from "./components/TestRunner";
+import LocalAIStatus from "./components/LocalAIStatus";
+import { analyzeMessage, LocalUnavailableError } from "./ai/analyzeMessage";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [view, setView] = useState("analyze");
+  const [message, setMessage] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [askConsent, setAskConsent] = useState(false);
+  const [localReason, setLocalReason] = useState("");
+
+  async function run(allowCloud) {
+    setLoading(true);
+    setError("");
+    try {
+      const r = await analyzeMessage(message, { allowCloud });
+      setResult(r);
+    } catch (err) {
+      if (err instanceof LocalUnavailableError) {
+        setLocalReason(err.cause?.message || String(err.cause || ""));
+        setAskConsent(true);
+      } else {
+        console.error(err);
+        setError(err.message || "Something went wrong. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const cancelConsent = useCallback(() => {
+    setAskConsent(false);
+    setError(`Analysis cancelled: nothing was sent to the cloud. On-device AI error: ${localReason}`);
+  }, [localReason]);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="app">
+      <header className="header">
+        <div className="brand">
+          <span className="logo" aria-hidden="true">🛡️</span>
+          <div>
+            <h1>ScamShield</h1>
+            <p className="muted small">Hybrid AI scam detector · on-device first, cloud only with your consent</p>
+          </div>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+        <nav className="nav">
+          <button className={`tab ${view === "analyze" ? "active" : ""}`} onClick={() => setView("analyze")}>
+            Analyze
+          </button>
+          <button className={`tab ${view === "tests" ? "active" : ""}`} onClick={() => setView("tests")}>
+            Test runner
+          </button>
+        </nav>
+      </header>
 
-      <div className="ticks"></div>
+      <LocalAIStatus />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {view === "analyze" ? (
+        <main className="grid">
+          <div className="col">
+            <MessageInput
+              value={message}
+              onChange={setMessage}
+              onAnalyze={() => run(false)}
+              onClear={() => {
+                setMessage("");
+                setResult(null);
+                setError("");
+              }}
+              loading={loading}
+            />
+            {error && (
+              <div className="error" role="alert">
+                <span>{error}</span>
+                <button className="close" onClick={() => setError("")} aria-label="Dismiss">
+                  Ã—
+                </button>
+              </div>
+            )}
+            <ExampleMessages
+              onPick={(text) => {
+                setMessage(text);
+                setResult(null);
+                setError("");
+              }}
+            />
+          </div>
+          <div className="col">
+            <ResultCard result={result} />
+          </div>
+        </main>
+      ) : (
+        <main>
+          <TestRunner />
+        </main>
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <CloudConsentDialog
+        open={askConsent}
+        reason={localReason}
+        onCancel={cancelConsent}
+        onAllow={() => {
+          setAskConsent(false);
+          run(true);
+        }}
+      />
+
+      <footer className="footer muted small">Built for #BuildHybridAI · Firebase AI Logic · MIT License</footer>
+    </div>
+  );
 }
-
-export default App
