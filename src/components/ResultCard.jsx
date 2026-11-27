@@ -32,7 +32,8 @@ export default function ResultCard({ result, trace, loading }) {
   }
 
   // The badge depends ONLY on result.source.
-  const isLocal = result.source === "local";
+  const isSim = result.source === "local-sim";
+  const isLocal = result.source === "local" || isSim;
   const v = VERDICT[result.risk] || VERDICT.medium;
 
   return (
@@ -44,7 +45,7 @@ export default function ResultCard({ result, trace, loading }) {
           <p className="verdict-type">{result.type}</p>
         </div>
         <span className={`badge ${isLocal ? "badge-local" : "badge-cloud"}`}>
-          {isLocal ? "💻 Local analysis" : "☁️ Cloud analysis"}
+          {isSim ? "💻 Local · SIMULATION" : isLocal ? "💻 Local analysis" : "☁️ Cloud analysis"}
         </span>
       </div>
 

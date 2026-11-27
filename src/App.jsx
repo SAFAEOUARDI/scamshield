@@ -9,9 +9,16 @@ import HybridEngines from "./components/HybridEngines";
 import { useLocalAI } from "./hooks/useLocalAI";
 import { analyzeMessage, LocalUnavailableError } from "./ai/analyzeMessage";
 import { anonymize } from "./ai/anonymize";
+import { simulateLocalAnalysis } from "./ai/simulateLocal";
 
 export default function App() {
-  const local = useLocalAI();
+  const realLocal = useLocalAI();
+  // "real" = real device; "sim-local" = simulate a device WITH on-device AI; "sim-nolocal" = simulate a device WITHOUT it.
+  const [mode, setMode] = useState("real");
+  const local =
+    mode === "real"
+      ? realLocal
+      : { ...realLocal, status: mode === "sim-local" ? "available" : "unavailable", simulated: true };
   const [view, setView] = useState("analyze");
   const [message, setMessage] = useState("");
   const [result, setResult] = useState(null);
@@ -34,6 +41,35 @@ export default function App() {
     setLoading(true);
     setActive("local");
     setTrace([{ kind: "run", icon: "💻", title: "Trying on-device AI (Gemini Nano)..." }]);
+
+    if (mode === "sim-local") {
+      await new Promise((r) => setTimeout(r, 900));
+      setResult(simulateLocalAnalysis(message));
+      setTrace([
+        {
+          kind: "skip",
+          icon: "🧪",
+          title: "SIMULATION of the on-device path",
+          detail: "This device cannot run Gemini Nano, so a small rule-based engine stands in for it.",
+        },
+        { kind: "ok", icon: "💻", title: "Analysed in the browser, on this device" },
+        { kind: "ok", icon: "🔒", title: "Nothing was sent over the network" },
+      ]);
+      setLoading(false);
+      setActive(null);
+      return;
+    }
+    if (mode === "sim-nolocal") {
+      const reason = "Simulation: this device has no on-device model.";
+      await new Promise((r) => setTimeout(r, 500));
+      setLocalReason(reason);
+      setTrace([{ kind: "skip", icon: "💻", title: "On-device AI not available", detail: reason }]);
+      setAskConsent(true);
+      setLoading(false);
+      setActive(null);
+      return;
+    }
+
     try {
       const r = await analyzeMessage(message, { allowCloud: false });
       setResult(r);
@@ -104,6 +140,14 @@ export default function App() {
           </div>
         </div>
         <nav className="nav">
+          <label className="mode">
+            <span>Mode</span>
+            <select value={mode} onChange={(e) => { setMode(e.target.value); setResult(null); setTrace([]); setError(""); }}>
+              <option value="real">Real device</option>
+              <option value="sim-local">Simulation: device with on-device AI</option>
+              <option value="sim-nolocal">Simulation: device without on-device AI</option>
+            </select>
+          </label>
           <button className={`tab ${view === "analyze" ? "active" : ""}`} onClick={() => setView("analyze")}>
             Analyze
           </button>
@@ -113,7 +157,13 @@ export default function App() {
         </nav>
       </header>
 
-      <HybridEngines local={local} active={active} used={result?.source} />
+      {mode !== "real" && (
+        <div className="sim-banner" role="status">
+          🧪 Simulation mode: {mode === "sim-local" ? "on-device results come from a rule-based demo engine, not Gemini Nano." : "on-device AI is treated as unavailable; the cloud step is real."}
+        </div>
+      )}
+
+      <HybridEngines local={local} active={active} used={result?.source === "local-sim" ? "local" : result?.source} />
 
       {view === "analyze" ? (
         <main className="grid">

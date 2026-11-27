@@ -33,17 +33,18 @@ export default function HybridEngines({ local, active, used }) {
           <span className={`dot dot-${l.dot}`} />
           {l.label}
           {local.status === "downloading" && ` · ${local.progress}%`}
+          {local.simulated && <span className="sim-chip">simulated</span>}
         </p>
         <ul className="engine-points">
           <li>🔒 Message never leaves your device</li>
           <li>📴 Works offline · free · instant</li>
         </ul>
-        {local.status === "downloadable" && (
+        {!local.simulated && local.status === "downloadable" && (
           <button className="btn primary small-btn" onClick={local.download}>
             Download model
           </button>
         )}
-        {(local.status === "unavailable" || local.status === "unsupported") && (
+        {!local.simulated && (local.status === "unavailable" || local.status === "unsupported") && (
           <p className="engine-note">
             Needs desktop Chrome on a device with 22 GB free disk and a GPU (&gt;4 GB VRAM) or 16 GB RAM.
           </p>
