@@ -38,7 +38,7 @@ body {
 /* Header */
 .header { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 22px; }
 .brand { display: flex; align-items: center; gap: 14px; }
-.logo { font-size: 40px; filter: drop-shadow(0 6px 18px rgba(109, 125, 255, 0.5)); }
+.logo { width: 56px; height: 56px; display: block; }
 h1 {
   margin: 0; font-size: 30px; letter-spacing: -0.5px;
   background: linear-gradient(90deg, #fff, #b9c2ff 60%, #7dd3fc);
@@ -146,7 +146,7 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 
 /* Result */
 .result.empty { text-align: center; padding: 48px 22px; }
-.empty-icon { font-size: 54px; margin-bottom: 10px; filter: drop-shadow(0 8px 20px rgba(109, 125, 255, 0.5)); }
+.empty-icon { width: 96px; height: 96px; display: block; margin: 0 auto 10px; }
 .verdict { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; flex-wrap: wrap; }
 .verdict-high { background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.4); }
 .verdict-medium { background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); }

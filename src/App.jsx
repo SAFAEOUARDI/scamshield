@@ -133,7 +133,7 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="brand">
-          <span className="logo" aria-hidden="true">🛡️</span>
+          <img className="logo" src="/logo.png" alt="ScamShield logo" width="56" height="56" />
           <div>
             <h1>ScamShield</h1>
             <p className="tagline">Spot scams in Darija, Arabic, French, Spanish and English. Private by default.</p>

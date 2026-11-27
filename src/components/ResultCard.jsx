@@ -21,7 +21,7 @@ export default function ResultCard({ result, trace, loading }) {
   if (!result) {
     return (
       <section className="card result empty">
-        <div className="empty-icon" aria-hidden="true">🛡️</div>
+        <img className="empty-icon" src="/logo.png" alt="" width="96" height="96" />
         <h2>Is this message a scam?</h2>
         <p className="muted">Paste a message or pick an example, then click Analyze.</p>
         <p className="muted small">
