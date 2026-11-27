@@ -2,6 +2,8 @@
 
 Hybrid AI scam detector for SMS, WhatsApp and email messages, built for the Google **#BuildHybridAI** hackathon with **Firebase AI Logic**.
 
+**Live demo:** https://scamshield-ai-f2647.web.app
+
 ScamShield analyses a message and returns a risk score (0-100), the scam type, the reasons and safety advice. It works in English, French, Spanish, Arabic and Moroccan Darija.
 
 ## Why hybrid?
@@ -42,10 +44,12 @@ Open http://localhost:5173 in Chrome.
 
 ## Enable on-device AI (Gemini Nano) in Chrome
 
-1. Use Chrome 139 or newer on desktop, with enough free disk space for the model (check Chrome's current requirements).
-2. Open `chrome://flags`, enable **Prompt API for Gemini Nano** and **Enables optimization guide on device**, then restart Chrome.
-3. Open `chrome://on-device-internals` and check that the model is downloaded and ready.
-4. In ScamShield, analyse a message: the badge must show **Local analysis**. You can turn off Wi-Fi to prove it runs offline.
+1. Use desktop Chrome (the Prompt API ships in recent stable versions) on a device that meets Chrome's built-in AI requirements: at least 22 GB free disk space, and either a GPU with more than 4 GB of VRAM or 16 GB of RAM with 4+ CPU cores. See https://developer.chrome.com/docs/ai/get-started
+2. Open ScamShield. The status bar under the title shows the on-device model state. If it offers to download the model, click the download button and keep Chrome open.
+3. When the bar shows that on-device AI is ready, analyse a message: the badge shows **Local analysis**. Turn off Wi-Fi to check that it runs offline.
+4. You can also check the model in `chrome://on-device-internals`.
+
+On devices that do not meet these requirements (or in browsers without the Prompt API), the bar says so and ScamShield asks for consent before using the cloud. It never labels a cloud result as local.
 
 ## App Check
 
@@ -56,6 +60,11 @@ Open http://localhost:5173 in Chrome.
 ## Test runner
 
 The **Test runner** tab analyses the 20 test messages and shows expected vs. predicted results, the inference source and the accuracy. A result counts as a scam when the risk is medium or high.
+
+## Testing status
+
+- Cloud path: tested on the 20 messages (English, French, Spanish, Arabic, Darija). All analysed messages were classified correctly; the free Gemini tier allows 15 requests per minute, so the Test runner waits between cloud calls.
+- On-device path: implemented with Firebase AI Logic (`InferenceMode.ONLY_ON_DEVICE`) and an explicit `LanguageModel.availability()` check. Our development laptop does not meet Chrome's hardware requirements for Gemini Nano, so it shows "not available on this device" and uses the consent + cloud flow.
 
 ## License
 
