@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
-export default function CloudConsentDialog({ open, reason, onAllow, onCancel }) {
+// Asks the user before anything is sent to the cloud, and shows exactly what will be sent.
+export default function CloudConsentDialog({ open, reason, preview, onAllow, onCancel }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && onCancel();
@@ -19,16 +20,26 @@ export default function CloudConsentDialog({ open, reason, onAllow, onCancel }) 
         aria-labelledby="consent-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="consent-title">Use cloud AI?</h2>
-        <p>On-device AI is not available in this browser right now.</p>
-        {reason && <p className="muted small">Technical reason: {reason}</p>}
+        <div className="dialog-flow" aria-hidden="true">
+          <span className="flow-off">💻 On-device</span>
+          <span className="flow-arrow">→</span>
+          <span className="flow-on">☁️ Cloud</span>
+        </div>
+        <h2 id="consent-title">Send this message to cloud AI?</h2>
         <p>
-          With your permission, ScamShield can send this message to Gemini in the cloud through Firebase AI Logic.
-          Phone numbers, emails, card numbers and IBANs are masked before sending.
+          On-device AI is not available here, so nothing has left your device yet. With your permission, ScamShield
+          will ask Gemini in the cloud through Firebase AI Logic.
         </p>
+        {reason && <p className="muted small">Reason: {reason}</p>}
+
+        <p className="preview-label">This is exactly what will be sent (personal data masked):</p>
+        <pre className="preview" dir="auto">
+          {preview}
+        </pre>
+
         <div className="dialog-actions">
           <button className="btn secondary" onClick={onCancel}>
-            Cancel
+            Keep it on my device
           </button>
           <button className="btn primary" onClick={onAllow} autoFocus>
             Allow cloud analysis

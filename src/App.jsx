@@ -5,10 +5,13 @@ import ExampleMessages from "./components/ExampleMessages";
 import ResultCard from "./components/ResultCard";
 import CloudConsentDialog from "./components/CloudConsentDialog";
 import TestRunner from "./components/TestRunner";
-import LocalAIStatus from "./components/LocalAIStatus";
+import HybridEngines from "./components/HybridEngines";
+import { useLocalAI } from "./hooks/useLocalAI";
 import { analyzeMessage, LocalUnavailableError } from "./ai/analyzeMessage";
+import { anonymize } from "./ai/anonymize";
 
 export default function App() {
+  const local = useLocalAI();
   const [view, setView] = useState("analyze");
   const [message, setMessage] = useState("");
   const [result, setResult] = useState(null);
@@ -16,30 +19,79 @@ export default function App() {
   const [error, setError] = useState("");
   const [askConsent, setAskConsent] = useState(false);
   const [localReason, setLocalReason] = useState("");
+  const [active, setActive] = useState(null); // engine working now: "local" | "cloud" | null
+  const [trace, setTrace] = useState([]);
 
-  async function run(allowCloud) {
-    setLoading(true);
+  function reset() {
+    setResult(null);
     setError("");
+    setTrace([]);
+  }
+
+  // Step 1: always try on-device first.
+  async function analyzeLocalFirst() {
+    reset();
+    setLoading(true);
+    setActive("local");
+    setTrace([{ kind: "run", icon: "💻", title: "Trying on-device AI (Gemini Nano)..." }]);
     try {
-      const r = await analyzeMessage(message, { allowCloud });
+      const r = await analyzeMessage(message, { allowCloud: false });
       setResult(r);
+      setTrace([
+        { kind: "ok", icon: "💻", title: "Analysed on-device by Gemini Nano" },
+        { kind: "ok", icon: "🔒", title: "Nothing was sent over the network" },
+      ]);
     } catch (err) {
       if (err instanceof LocalUnavailableError) {
-        setLocalReason(err.cause?.message || String(err.cause || ""));
+        const reason = err.cause?.message || String(err.cause || "");
+        setLocalReason(reason);
+        setTrace([{ kind: "skip", icon: "💻", title: "On-device AI not available", detail: reason }]);
         setAskConsent(true);
       } else {
         console.error(err);
         setError(err.message || "Something went wrong. Please try again.");
+        setTrace([]);
       }
     } finally {
       setLoading(false);
+      setActive(null);
+    }
+  }
+
+  // Step 2: cloud, only after consent, with masked data.
+  async function analyzeInCloud() {
+    setAskConsent(false);
+    setLoading(true);
+    setActive("cloud");
+    const masked = anonymize(message.trim());
+    const before = [
+      { kind: "skip", icon: "💻", title: "On-device AI not available", detail: localReason },
+      { kind: "ok", icon: "✋", title: "You allowed cloud analysis" },
+      { kind: "ok", icon: "🙈", title: "Personal data masked before sending", detail: masked },
+    ];
+    setTrace([...before, { kind: "run", icon: "☁️", title: "Asking Gemini in the cloud..." }]);
+    try {
+      const r = await analyzeMessage(message, { allowCloud: true });
+      setResult(r);
+      setTrace([
+        ...before,
+        { kind: "ok", icon: "☁️", title: "Analysed in the cloud by Gemini (Firebase AI Logic + App Check)" },
+      ]);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Cloud analysis failed. Please try again.");
+      setTrace([]);
+    } finally {
+      setLoading(false);
+      setActive(null);
     }
   }
 
   const cancelConsent = useCallback(() => {
     setAskConsent(false);
-    setError(`Analysis cancelled: nothing was sent to the cloud. On-device AI error: ${localReason}`);
-  }, [localReason]);
+    setTrace([]);
+    setError("Cancelled: your message stayed on your device. Nothing was sent to the cloud.");
+  }, []);
 
   return (
     <div className="app">
@@ -48,7 +100,7 @@ export default function App() {
           <span className="logo" aria-hidden="true">🛡️</span>
           <div>
             <h1>ScamShield</h1>
-            <p className="muted small">Hybrid AI scam detector · on-device first, cloud only with your consent</p>
+            <p className="tagline">Spot scams in Darija, Arabic, French, Spanish and English. Private by default.</p>
           </div>
         </div>
         <nav className="nav">
@@ -61,7 +113,7 @@ export default function App() {
         </nav>
       </header>
 
-      <LocalAIStatus />
+      <HybridEngines local={local} active={active} used={result?.source} />
 
       {view === "analyze" ? (
         <main className="grid">
@@ -69,11 +121,10 @@ export default function App() {
             <MessageInput
               value={message}
               onChange={setMessage}
-              onAnalyze={() => run(false)}
+              onAnalyze={analyzeLocalFirst}
               onClear={() => {
                 setMessage("");
-                setResult(null);
-                setError("");
+                reset();
               }}
               loading={loading}
             />
@@ -81,20 +132,19 @@ export default function App() {
               <div className="error" role="alert">
                 <span>{error}</span>
                 <button className="close" onClick={() => setError("")} aria-label="Dismiss">
-                  Ã—
+                  ×
                 </button>
               </div>
             )}
             <ExampleMessages
               onPick={(text) => {
                 setMessage(text);
-                setResult(null);
-                setError("");
+                reset();
               }}
             />
           </div>
           <div className="col">
-            <ResultCard result={result} />
+            <ResultCard result={result} trace={trace} loading={loading} />
           </div>
         </main>
       ) : (
@@ -106,14 +156,14 @@ export default function App() {
       <CloudConsentDialog
         open={askConsent}
         reason={localReason}
+        preview={anonymize(message.trim())}
         onCancel={cancelConsent}
-        onAllow={() => {
-          setAskConsent(false);
-          run(true);
-        }}
+        onAllow={analyzeInCloud}
       />
 
-      <footer className="footer muted small">Built for #BuildHybridAI · Firebase AI Logic · MIT License</footer>
+      <footer className="footer">
+        Built for #BuildHybridAI · Firebase AI Logic hybrid inference · App Check · MIT License
+      </footer>
     </div>
   );
 }
